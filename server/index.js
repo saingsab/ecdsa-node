@@ -1,3 +1,4 @@
+const secp = require("ethereum-cryptography/secp256k1");
 const express = require("express");
 const app = express();
 const cors = require("cors");
@@ -19,28 +20,23 @@ app.get("/balance/:address", (req, res) => {
 });
 
 app.post("/send", (req, res) => {
-
-    /* TODO
-  send only the signature, get a signature from the client-side application
-
-  recover the valid key from the transfer fund, recover the public address from the signature
-
-  flow -> the sender is the signer
-
-  signature, recipient, amount ->>>
-  */
-
-  const { sender, recipient, amount } = req.body;
-
-  setInitialBalance(sender);
-  setInitialBalance(recipient);
-
-  if (balances[sender] < amount) {
-    res.status(400).send({ message: "Not enough funds!" });
-  } else {
-    balances[sender] -= amount;
-    balances[recipient] += amount;
-    res.send({ balance: balances[sender] });
+  
+  const { signature, recipient, amount } = req.body;
+  let balanceKeys = Object.keys(balances);
+  // Verify sender
+  for(let i = 0; i < balanceKeys.length; i++) {
+    const verify = secp.secp256k1.verify(secp.secp256k1.Signature.fromCompact(signature), "", balanceKeys[i])
+    if(verify){
+      setInitialBalance(balanceKeys[i]);
+      setInitialBalance(recipient);
+      if (balances[balanceKeys[i].trim()] < amount) {
+        res.status(400).send({ message: "Not enough funds!" });
+      } else {
+        balances[balanceKeys[i]] -= amount;
+        balances[recipient] += amount;
+        res.send({ balance: balances[balanceKeys[i]] });
+      }
+    }
   }
 });
 
